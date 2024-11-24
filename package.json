@@ -11,11 +11,11 @@
     "lint": "eslint src/*",
     "prepare": "node esbuild.mjs"
   },
-  "dependencies": {},
   "devDependencies": {
     "@eslint/js": "^9.9.0",
     "@types/eslint__js": "^8.42.3",
     "@types/node": "^22.9.1",
+    "esbuild": "^0.24.0",
     "eslint": "^9.9.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.3.3",
