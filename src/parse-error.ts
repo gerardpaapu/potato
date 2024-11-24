@@ -14,7 +14,8 @@ export type ErrorType =
   | 'MissingEpilogue'
   | 'TrailingTokens'
   | 'UnexpectedEndOfInput'
-  | 'UnexpectedToken';
+  | 'UnexpectedToken'
+  | 'ErrorInUserSuppliedFunction'
 
 export interface ParseError {
   start: number;

@@ -286,7 +286,7 @@ describe('bad function calls', () => {
           {
             "error": {
               "start": 0,
-              "type": "InvalidFunctionName",
+              "type": "ErrorInUserSuppliedFunction",
             },
             "ok": false,
           }
