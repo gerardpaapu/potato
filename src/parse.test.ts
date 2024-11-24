@@ -1,14 +1,14 @@
-import { describe, it, expect } from 'vitest';
-import { tokenize } from './tokenize.ts';
-import { source } from './source.ts';
-import { parse } from './parse.ts';
-import { compose } from './result.ts';
+import { describe, it, expect } from "vitest";
+import { tokenize } from "./tokenize.ts";
+import { source } from "./source.ts";
+import { parse } from "./parse.ts";
+import { compose } from "./result.ts";
 
 const EXAMPLE =
   '{"__type":"NetProfit.Construct.Web.UI.Ajax.AjaxResult, NetProfit.Construct.Web.Internal, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null","IsValid":true,"Result":"","Exception":"","Data":new Data.Dictionary("System.Collections.Generic.Dictionary`2[[System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089],[System.Object, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]",[["Start",1],["PageSize",50],["TotalCount",16],["CurrencyListJson","[]"]])};/*';
 
-describe('example payloads to parse', () => {
-  it('parses correctly', () => {
+describe("example payloads to parse", () => {
+  it("parses correctly", () => {
     expect(compose(tokenize, parse)(source(EXAMPLE))).toMatchInlineSnapshot(`
           {
             "ok": true,
@@ -109,9 +109,10 @@ describe('example payloads to parse', () => {
   });
 });
 
-describe('parsing specific inputs', () => {
-  it('parses empty function calls', () => {
-    expect(compose(tokenize, parse)(source('new Data.Dictionary();/*'))).toMatchInlineSnapshot(`
+describe("parsing specific inputs", () => {
+  it("parses empty function calls", () => {
+    expect(compose(tokenize, parse)(source("new Data.Dictionary();/*")))
+      .toMatchInlineSnapshot(`
       {
         "ok": true,
         "value": {
@@ -124,6 +125,6 @@ describe('parsing specific inputs', () => {
           },
         },
       }
-    `)
-  })
-})
+    `);
+  });
+});

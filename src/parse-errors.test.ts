@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from "vitest";
 import { read } from "./index.ts";
-describe('out of input', () => {
-    it('complains about unfinished arrays', () => {
-        expect(read('[1, 2')).toMatchInlineSnapshot(`
+describe("out of input", () => {
+  it("complains about unfinished arrays", () => {
+    expect(read("[1, 2")).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 5,
@@ -11,9 +11,9 @@ describe('out of input', () => {
             },
             "ok": false,
           }
-        `)
+        `);
 
-        expect(read('[')).toMatchInlineSnapshot(`
+    expect(read("[")).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 1,
@@ -22,12 +22,11 @@ describe('out of input', () => {
             },
             "ok": false,
           }
-        `)
+        `);
+  });
 
-    })
-
-    it('complains about unfinished objects', () => {
-        expect(read('{')).toMatchInlineSnapshot(`
+  it("complains about unfinished objects", () => {
+    expect(read("{")).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 1,
@@ -36,8 +35,8 @@ describe('out of input', () => {
             },
             "ok": false,
           }
-        `)
-        expect(read('{ "1": 2,')).toMatchInlineSnapshot(`
+        `);
+    expect(read('{ "1": 2,')).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 9,
@@ -46,9 +45,9 @@ describe('out of input', () => {
             },
             "ok": false,
           }
-        `)
+        `);
 
-        expect(read('{ "1": 2')).toMatchInlineSnapshot(`
+    expect(read('{ "1": 2')).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 8,
@@ -57,11 +56,11 @@ describe('out of input', () => {
             },
             "ok": false,
           }
-        `)
-    })
+        `);
+  });
 
-    it('complains about unfinished function calls', () => {
-        expect(read('new Data.Dictionary(1, 2')).toMatchInlineSnapshot(`
+  it("complains about unfinished function calls", () => {
+    expect(read("new Data.Dictionary(1, 2")).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 24,
@@ -71,10 +70,10 @@ describe('out of input', () => {
             "ok": false,
           }
         `);
-    })
+  });
 
-    it('complains about unfinished function names', () => {
-        expect(read('new Data.')).toMatchInlineSnapshot(`
+  it("complains about unfinished function names", () => {
+    expect(read("new Data.")).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 9,
@@ -83,13 +82,13 @@ describe('out of input', () => {
             },
             "ok": false,
           }
-        `)
-    })
-})
+        `);
+  });
+});
 
-describe('missing separators', () => {
-    it('complains about missing commas in arrays', () => {
-        expect(read('[1, 2 3]')).toMatchInlineSnapshot(`
+describe("missing separators", () => {
+  it("complains about missing commas in arrays", () => {
+    expect(read("[1, 2 3]")).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 7,
@@ -98,11 +97,11 @@ describe('missing separators', () => {
             },
             "ok": false,
           }
-        `)
-    })
+        `);
+  });
 
-    it('complains about missing colons in objects', () => {
-        expect(read('{ "foo": 1, "bar" 8 }')).toMatchInlineSnapshot(`
+  it("complains about missing colons in objects", () => {
+    expect(read('{ "foo": 1, "bar" 8 }')).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 19,
@@ -111,11 +110,11 @@ describe('missing separators', () => {
             },
             "ok": false,
           }
-        `)
-    })
+        `);
+  });
 
-    it('complains about missing colons in the first pair of objects', () => {
-        expect(read('{ "foo" 1 }')).toMatchInlineSnapshot(`
+  it("complains about missing colons in the first pair of objects", () => {
+    expect(read('{ "foo" 1 }')).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 9,
@@ -124,12 +123,11 @@ describe('missing separators', () => {
             },
             "ok": false,
           }
-        `)
-    })
+        `);
+  });
 
-
-    it('complains about missing commas in objects', () => {
-        expect(read('{ "foo": 1 "bar": 8 }')).toMatchInlineSnapshot(`
+  it("complains about missing commas in objects", () => {
+    expect(read('{ "foo": 1 "bar": 8 }')).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 16,
@@ -138,11 +136,11 @@ describe('missing separators', () => {
             },
             "ok": false,
           }
-        `)
-    })
+        `);
+  });
 
-    it('complains about missing keys in objects', () => {
-        expect(read('{ foo: 1, "bar" 8 }')).toMatchInlineSnapshot(`
+  it("complains about missing keys in objects", () => {
+    expect(read('{ foo: 1, "bar" 8 }')).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 5,
@@ -151,8 +149,8 @@ describe('missing separators', () => {
             },
             "ok": false,
           }
-        `)
-        expect(read('{ "foo": 1, bar 8 }')).toMatchInlineSnapshot(`
+        `);
+    expect(read('{ "foo": 1, bar 8 }')).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 15,
@@ -161,13 +159,11 @@ describe('missing separators', () => {
             },
             "ok": false,
           }
-        `)
-      
-    })
+        `);
+  });
 
-
-    it('complains about missing commas in argument lists', () => {
-        expect(read('new Data.Dictionary(1 2, 3)')).toMatchInlineSnapshot(`
+  it("complains about missing commas in argument lists", () => {
+    expect(read("new Data.Dictionary(1 2, 3)")).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 23,
@@ -176,13 +172,13 @@ describe('missing separators', () => {
             },
             "ok": false,
           }
-        `)
-    })
-})
+        `);
+  });
+});
 
-describe('epilogue errors', ()=> {
-    it('complains about missing epilogue', () => {
-        expect(read('1')).toMatchInlineSnapshot(`
+describe("epilogue errors", () => {
+  it("complains about missing epilogue", () => {
+    expect(read("1")).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 1,
@@ -191,11 +187,11 @@ describe('epilogue errors', ()=> {
             },
             "ok": false,
           }
-        `)
-    })
+        `);
+  });
 
-    it('complains about tokens after the epilogue', () => {
-        expect(read('1;/* 2')).toMatchInlineSnapshot(`
+  it("complains about tokens after the epilogue", () => {
+    expect(read("1;/* 2")).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 2,
@@ -204,13 +200,13 @@ describe('epilogue errors', ()=> {
             },
             "ok": false,
           }
-        `)
-    })
-})
+        `);
+  });
+});
 
-describe('errors propagate out of data structures', () => {
-    it('propagates out of arrays', () => {
-        expect(read('[1, 2, invalid]; /*')).toMatchInlineSnapshot(`
+describe("errors propagate out of data structures", () => {
+  it("propagates out of arrays", () => {
+    expect(read("[1, 2, invalid]; /*")).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 15,
@@ -219,8 +215,8 @@ describe('errors propagate out of data structures', () => {
             },
             "ok": false,
           }
-        `)
-        expect(read('[invalid]; /*')).toMatchInlineSnapshot(`
+        `);
+    expect(read("[invalid]; /*")).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 9,
@@ -229,11 +225,11 @@ describe('errors propagate out of data structures', () => {
             },
             "ok": false,
           }
-        `)
-    })
+        `);
+  });
 
-    it('propagates out of objects', () => {
-        expect(read('{ "foo": bar }; /*')).toMatchInlineSnapshot(`
+  it("propagates out of objects", () => {
+    expect(read('{ "foo": bar }; /*')).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 14,
@@ -242,9 +238,9 @@ describe('errors propagate out of data structures', () => {
             },
             "ok": false,
           }
-        `)
+        `);
 
-        expect(read('{ "foo": 1, "bar": oops }; /*')).toMatchInlineSnapshot(`
+    expect(read('{ "foo": 1, "bar": oops }; /*')).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 25,
@@ -253,11 +249,11 @@ describe('errors propagate out of data structures', () => {
             },
             "ok": false,
           }
-        `)
-    })
+        `);
+  });
 
-    it('propagates out of argument lists', () => {
-        expect(read('new Data.Dictionary(OOPS)')).toMatchInlineSnapshot(`
+  it("propagates out of argument lists", () => {
+    expect(read("new Data.Dictionary(OOPS)")).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 25,
@@ -266,8 +262,8 @@ describe('errors propagate out of data structures', () => {
             },
             "ok": false,
           }
-        `)
-        expect(read('new Data.Dictionary(1, [)')).toMatchInlineSnapshot(`
+        `);
+    expect(read("new Data.Dictionary(1, [)")).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 25,
@@ -276,13 +272,13 @@ describe('errors propagate out of data structures', () => {
             },
             "ok": false,
           }
-        `)
-    })
-})
+        `);
+  });
+});
 
-describe('bad function calls', () => {
-    it('expects Data.Dictionary to be called with "new"', () => {
-        expect(read('Data.Dictionary(1, 2); /*')).toMatchInlineSnapshot(`
+describe("bad function calls", () => {
+  it('expects Data.Dictionary to be called with "new"', () => {
+    expect(read("Data.Dictionary(1, 2); /*")).toMatchInlineSnapshot(`
           {
             "error": {
               "start": 0,
@@ -290,11 +286,11 @@ describe('bad function calls', () => {
             },
             "ok": false,
           }
-        `)
-    })
+        `);
+  });
 
-    it('supports only Data.Dictionary as a constructor', () => {
-        expect(read('new Data.Map(1, 2); /*')).toMatchInlineSnapshot(`
+  it("supports only Data.Dictionary as a constructor", () => {
+    expect(read("new Data.Map(1, 2); /*")).toMatchInlineSnapshot(`
           {
             "error": {
               "start": 0,
@@ -302,11 +298,11 @@ describe('bad function calls', () => {
             },
             "ok": false,
           }
-        `)
-    })
+        `);
+  });
 
-    it('expects function names to be identifiers', () => {
-        expect(read('new Data.1(1, 2);/*')).toMatchInlineSnapshot(`
+  it("expects function names to be identifiers", () => {
+    expect(read("new Data.1(1, 2);/*")).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 10,
@@ -315,11 +311,11 @@ describe('bad function calls', () => {
             },
             "ok": false,
           }
-        `)
-    })
+        `);
+  });
 
-    it('expects arguments to follow a open parenthetical', () => {
-        expect(read('new Data.Dictionary(')).toMatchInlineSnapshot(`
+  it("expects arguments to follow a open parenthetical", () => {
+    expect(read("new Data.Dictionary(")).toMatchInlineSnapshot(`
           {
             "error": {
               "end": 20,
@@ -328,6 +324,6 @@ describe('bad function calls', () => {
             },
             "ok": false,
           }
-        `)
-    })
-})
+        `);
+  });
+});

@@ -1,31 +1,37 @@
-import { Ast, Value, OBJECT, ARRAY, FUNCALL, PRIMITIVE } from './parse.ts';
-import * as Result from './result.ts';
-import { ParseError } from './parse-error.ts';
+import { Ast, Value, OBJECT, ARRAY, FUNCALL, PRIMITIVE } from "./parse.ts";
+import * as Result from "./result.ts";
+import { ParseError } from "./parse-error.ts";
 
 export type AjaxProResult = Result.T<unknown, unknown>;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Constructors = Record<string, ((...args: any[]) => any) |(new (...args: any[]) => any) | undefined>
+export type Constructors = Record<
+  string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ((...args: any[]) => any) | (new (...args: any[]) => any) | undefined
+>;
 
 export const defaultFunctions: Constructors = {
-  'Data.Dictionary': function Dictionary(_typeGore, pairs) {
+  "Data.Dictionary": function Dictionary(_typeGore, pairs) {
     if (!(this instanceof Dictionary)) {
-      throw new TypeError('Data.Dictionary should be called with `new`')
+      throw new TypeError("Data.Dictionary should be called with `new`");
     }
 
-    const map = new Map()
+    const map = new Map();
     for (const [key, value] of pairs) {
-      map.set(key, value)
+      map.set(key, value);
     }
-    return map
-  }
-}
+    return map;
+  },
+};
 
 export function interpret(ast: Ast): AjaxProResult {
   return interpretWith(ast, defaultFunctions);
 }
 
-export function interpretWith(ast: Ast, functions: Constructors): AjaxProResult {
+export function interpretWith(
+  ast: Ast,
+  functions: Constructors,
+): AjaxProResult {
   if (!ast.ok) {
     const r = extract(ast.error, functions);
     if (!r.ok) {
@@ -41,7 +47,10 @@ export function interpretWith(ast: Ast, functions: Constructors): AjaxProResult 
   return { ok: true, value: r.value };
 }
 
-export function extract(v: Value, constructors: Constructors): Result.T<unknown, ParseError> {
+export function extract(
+  v: Value,
+  constructors: Constructors,
+): Result.T<unknown, ParseError> {
   switch (v.type) {
     case PRIMITIVE:
       return Result.ok(v.value);
@@ -75,30 +84,33 @@ export function extract(v: Value, constructors: Constructors): Result.T<unknown,
 
     case FUNCALL: {
       const { name, args, isConstructor } = v;
-      if (name in constructors && typeof constructors[name] === 'function') {
-        const fn = constructors[name]
+      if (name in constructors && typeof constructors[name] === "function") {
+        const fn = constructors[name];
         const args$ = [] as Array<unknown>;
         for (const item of args) {
           const result = extract(item, constructors);
           if (!result.ok) {
             return result;
           }
-  
+
           args$.push(result.value);
         }
-      
+
         try {
           // @ts-expect-error we can't prove that these are valid constructors
-          const results = isConstructor ? new fn(...args$) : fn(...args$)
+          const results = isConstructor ? new fn(...args$) : fn(...args$);
           return Result.ok(results);
-        } catch  {
-          return Result.error({ start: 0, type: 'ErrorInUserSuppliedFunction' })
+        } catch {
+          return Result.error({
+            start: 0,
+            type: "ErrorInUserSuppliedFunction",
+          });
         }
       }
 
       return Result.error({
         start: 0,
-        type: 'InvalidFunctionName',
+        type: "InvalidFunctionName",
       });
     }
   }

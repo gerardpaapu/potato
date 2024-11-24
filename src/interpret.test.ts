@@ -1,15 +1,15 @@
-import { describe, it, expect } from 'vitest';
-import { tokenize } from './tokenize.ts';
-import { source } from './source.ts';
-import { parse } from './parse.ts';
-import { interpret } from './interpret.ts';
-import { compose3 } from './result.ts';
+import { describe, it, expect } from "vitest";
+import { tokenize } from "./tokenize.ts";
+import { source } from "./source.ts";
+import { parse } from "./parse.ts";
+import { interpret } from "./interpret.ts";
+import { compose3 } from "./result.ts";
 
 const EXAMPLE =
   '{"__type":"NetProfit.Construct.Web.UI.Ajax.AjaxResult, NetProfit.Construct.Web.Internal, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null","IsValid":true,"Result":"","Exception":"","Data":new Data.Dictionary("System.Collections.Generic.Dictionary`2[[System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089],[System.Object, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]",[["Start",1],["PageSize",50],["TotalCount",16],["CurrencyListJson","[]"]])};/*';
 
-describe('example payloads to interpret', () => {
-  it('interprets correctly', () => {
+describe("example payloads to interpret", () => {
+  it("interprets correctly", () => {
     const result = compose3(tokenize, parse, interpret)(source(EXAMPLE));
     expect(result).toMatchInlineSnapshot(`
       {
@@ -31,12 +31,10 @@ describe('example payloads to interpret', () => {
   });
 });
 
+describe("an object", () => {
+  const read = compose3(tokenize, parse, interpret);
 
-describe('an object', () => {
-  const read = compose3(tokenize, parse, interpret)
-
-  it('reads a basic object', () => {
-
+  it("reads a basic object", () => {
     expect(read(source('{ "foo": 1};/*'))).toMatchInlineSnapshot(`
       {
         "ok": true,
@@ -44,31 +42,33 @@ describe('an object', () => {
           "foo": 1,
         },
       }
-    `)
-  })
+    `);
+  });
 
-  it('omits __proto__ keys', () => {
+  it("omits __proto__ keys", () => {
     expect(read(source('{ "__proto__": 1 }; /*'))).toMatchInlineSnapshot(`
       {
         "ok": true,
         "value": {},
       }
-    `)
-  })
+    `);
+  });
 
-  it('reads an error payload', () => {
-    expect(read(source('null; r.error = { "foo": "bar" };/*'))).toMatchInlineSnapshot(`
+  it("reads an error payload", () => {
+    expect(read(source('null; r.error = { "foo": "bar" };/*')))
+      .toMatchInlineSnapshot(`
       {
         "error": {
           "foo": "bar",
         },
         "ok": false,
       }
-    `)
-  })
+    `);
+  });
 
-  it('reads primitives', () => {
-    expect(read(source('[undefined, null, true, false, 0];/*'))).toMatchInlineSnapshot(`
+  it("reads primitives", () => {
+    expect(read(source("[undefined, null, true, false, 0];/*")))
+      .toMatchInlineSnapshot(`
       {
         "ok": true,
         "value": [
@@ -79,38 +79,38 @@ describe('an object', () => {
           0,
         ],
       }
-    `)
-  })
-  it('reads weird strings', () => {
+    `);
+  });
+  it("reads weird strings", () => {
     expect(read(source('"\\u2665\\t\\n";/*'))).toMatchInlineSnapshot(`
       {
         "ok": true,
         "value": "♥	
       ",
       }
-    `)
-  })
+    `);
+  });
 
-  it('reads empty arrays', () => {
-    expect(read(source('[];/*'))).toMatchInlineSnapshot(`
+  it("reads empty arrays", () => {
+    expect(read(source("[];/*"))).toMatchInlineSnapshot(`
       {
         "ok": true,
         "value": [],
       }
-    `)
-  })
+    `);
+  });
 
-  it('reads empty objects', () => {
-    expect(read(source('{};/*'))).toMatchInlineSnapshot(`
+  it("reads empty objects", () => {
+    expect(read(source("{};/*"))).toMatchInlineSnapshot(`
       {
         "ok": true,
         "value": {},
       }
-    `)
-  })
+    `);
+  });
 
-  it('propagates syntax errors', () => {
-    expect(read(source('[;/*'))).toMatchInlineSnapshot(`
+  it("propagates syntax errors", () => {
+    expect(read(source("[;/*"))).toMatchInlineSnapshot(`
       {
         "error": {
           "end": 2,
@@ -119,11 +119,12 @@ describe('an object', () => {
         },
         "ok": false,
       }
-    `)
-  })
+    `);
+  });
 
-  it('manages errors thrown within error responses', () => {
-    expect(read(source('null; r.error = new Data.Oops();/*'))).toMatchInlineSnapshot(`
+  it("manages errors thrown within error responses", () => {
+    expect(read(source("null; r.error = new Data.Oops();/*")))
+      .toMatchInlineSnapshot(`
       {
         "error": {
           "start": 0,
@@ -131,11 +132,11 @@ describe('an object', () => {
         },
         "ok": false,
       }
-    `)
-  })
+    `);
+  });
 
-  it('manages errors from within collections', () => {
-    expect(read(source('[new Data.Oops()]; /*'))).toMatchInlineSnapshot(`
+  it("manages errors from within collections", () => {
+    expect(read(source("[new Data.Oops()]; /*"))).toMatchInlineSnapshot(`
       {
         "error": {
           "start": 0,
@@ -143,9 +144,10 @@ describe('an object', () => {
         },
         "ok": false,
       }
-    `)
+    `);
 
-    expect(read(source('{ "foo": new Data.Ooops() };/*'))).toMatchInlineSnapshot(`
+    expect(read(source('{ "foo": new Data.Ooops() };/*')))
+      .toMatchInlineSnapshot(`
       {
         "error": {
           "start": 0,
@@ -153,6 +155,6 @@ describe('an object', () => {
         },
         "ok": false,
       }
-    `)
-  })
-})
+    `);
+  });
+});
