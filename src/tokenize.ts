@@ -202,13 +202,6 @@ const ESCAPES = {
 
 function readStringLiteral(src: Source): Result.T<string, ParseError> {
   const delimiter = pop(src);
-  if (delimiter !== '"' && delimiter !== "'") {
-    return Result.error({
-      start: src.idx,
-      type: 'InvalidStringLiteral',
-    });
-  }
-
   let value = '';
   while (src.idx < src.str.length) {
     switch (peek(src)) {

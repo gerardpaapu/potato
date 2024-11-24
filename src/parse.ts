@@ -46,8 +46,8 @@ export function parse(tokens: Token[]): Result.T<Ast, ParseError> {
 
   const [value, next] = result.value;
   idx = next;
-  if (tokens[idx].type !== 'SEMICOLON' || tokens[idx + 1].type !== 'EPILOGUE') {
-    return fail(tokens, idx, 'MissingEpilogue');
+  if (idx >= tokens.length || tokens[idx].type !== 'SEMICOLON' || tokens[idx + 1].type !== 'EPILOGUE') {
+    return fail(tokens, idx - 1, 'MissingEpilogue');
   }
 
   if (tokens.length > idx + 2) {
@@ -138,20 +138,16 @@ export function parseValue(tokens: Token[], idx: number = 0): ParseResult {
 //        := empty
 
 function parseArray(tokens: Token[], idx: number): ParseResult {
-  if (tokens[idx].type !== 'OPEN_BRACKET') {
-    return fail(tokens, idx, 'ExpectedOpenBracket');
-  }
-
   idx++; // skip the bracket
   const results = [];
+  if (idx >= tokens.length) {
+    return fail(tokens, idx - 1, 'UnexpectedEndOfInput');
+  }
 
   if (tokens[idx].type === 'CLOSE_BRACKET') {
     return Result.ok([{ type: ARRAY, value: [] }, ++idx]);
   }
 
-  if (idx >= tokens.length) {
-    return fail(tokens, idx, 'UnexpectedEndOfInput');
-  }
 
   {
     const item = parseValue(tokens, idx);
@@ -166,7 +162,7 @@ function parseArray(tokens: Token[], idx: number): ParseResult {
 
   for (;;) {
     if (idx >= tokens.length) {
-      return fail(tokens, idx, 'UnexpectedEndOfInput');
+      return fail(tokens, idx - 1, 'UnexpectedEndOfInput');
     }
 
     if (tokens[idx].type === 'CLOSE_BRACKET') {
@@ -195,21 +191,16 @@ function parseArray(tokens: Token[], idx: number): ParseResult {
 // head  := key ':' value
 // tail  := empty | ',' key ':' value tail
 function parseObject(tokens: Token[], idx: number): ParseResult {
-  if (tokens[idx].type !== 'OPEN_BRACE') {
-    return fail(tokens, idx, 'ExpectedOpenBrace');
-  }
-
   idx++; // skip the bracket
   const results = {} as Record<string, Value>;
+  if (idx >= tokens.length) {
+    return fail(tokens, idx - 1, 'UnexpectedEndOfInput');
+  }
 
   if (tokens[idx].type === 'CLOSE_BRACE') {
     return Result.ok([{ type: OBJECT, value: results }, ++idx]);
   }
-
-  if (idx >= tokens.length) {
-    return fail(tokens, idx, 'UnexpectedEndOfInput');
-  }
-
+ 
   {
     if (tokens[idx].type !== 'STRING_LITERAL') {
       return fail(tokens, idx, 'ExpectedStringKey');
@@ -227,13 +218,15 @@ function parseObject(tokens: Token[], idx: number): ParseResult {
     }
 
     const [value, next] = item.value;
-    results[key!] = value;
+    if (key !== '__proto__') {
+      results[key!] = value;
+    }
     idx = next;
   }
 
   for (;;) {
     if (idx >= tokens.length) {
-      return fail(tokens, idx, 'UnexpectedEndOfInput');
+      return fail(tokens, idx - 1, 'UnexpectedEndOfInput');
     }
 
     if (tokens[idx].type === 'CLOSE_BRACE') {
@@ -245,7 +238,9 @@ function parseObject(tokens: Token[], idx: number): ParseResult {
       return fail(tokens, idx, 'ExpectedComma');
     }
     idx++;
-
+    if (idx >= tokens.length) {
+      return fail(tokens, idx - 1, 'UnexpectedEndOfInput');
+    }
     if (tokens[idx].type !== 'STRING_LITERAL') {
       return fail(tokens, idx, 'ExpectedStringKey');
     }
@@ -256,6 +251,7 @@ function parseObject(tokens: Token[], idx: number): ParseResult {
     if (tokens[idx].type !== 'COLON') {
       return fail(tokens, idx, 'ExpectedColon');
     }
+
     idx++;
     const item = parseValue(tokens, idx);
     if (!item.ok) {
@@ -263,20 +259,22 @@ function parseObject(tokens: Token[], idx: number): ParseResult {
     }
 
     const [value, next] = item.value;
-    results[key!] = value;
+    if (key !== '__proto__') {
+      results[key!] = value;
+    }
     idx = next;
   }
 }
 
 function parseFuncall(tokens: Token[], idx: number): ParseResult {
   const names = [];
-  if (tokens[idx].type !== 'IDENTIFIER') {
-    return fail(tokens, idx, 'ExpectedFunctionName');
-  }
 
   names.push(tokens[idx++].value);
   while (tokens[idx].type === 'DOT') {
     idx++; // skip the dot
+    if (idx >= tokens.length) {
+      return fail(tokens, idx - 1, 'UnexpectedEndOfInput');
+    }
     if (tokens[idx].type !== 'IDENTIFIER') {
       return fail(tokens, idx, 'ExpectedFunctionName');
     }
@@ -289,6 +287,9 @@ function parseFuncall(tokens: Token[], idx: number): ParseResult {
     return fail(tokens, idx, 'ExpectedArgumentsList');
   }
   idx++;
+  if (idx >= tokens.length) {
+    return fail(tokens, idx - 1, 'UnexpectedEndOfInput');
+  }
 
   if (tokens[idx].type === 'CLOSE_PAREN') {
     return Result.ok([
@@ -309,6 +310,10 @@ function parseFuncall(tokens: Token[], idx: number): ParseResult {
   }
 
   for (;;) {
+    if (idx >= tokens.length) {
+      return fail(tokens, idx - 1, 'UnexpectedEndOfInput');
+    }
+
     if (tokens[idx].type === 'CLOSE_PAREN') {
       return Result.ok([
         { type: FUNCALL, name: fqn, args, isConstructor: false },

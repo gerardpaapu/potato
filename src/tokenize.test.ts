@@ -5,6 +5,44 @@ import { source } from "./source.ts";
 const EXAMPLE =
   'value = {"__type":"NetProfit.Construct.Web.UI.Ajax.AjaxResult, NetProfit.Construct.Web.Internal, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null","IsValid":true,"Result":"","Exception":"","Data":new Data.Dictionary("System.Collections.Generic.Dictionary`2[[System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089],[System.Object, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]",[["Start",1],["PageSize",50],["TotalCount",16],["CurrencyListJson","[]"]])};/*';
 
+describe('tokenizing errors', () => {
+  it('errors for invalid strings', () => {
+    expect(tokenize(source('"foo'))).toMatchInlineSnapshot(`
+      {
+        "error": {
+          "start": 4,
+          "type": "InvalidStringLiteral",
+        },
+        "ok": false,
+      }
+    `)
+  })
+
+  it('errors for incomplete epilogue', () => {
+    expect(tokenize(source('/'))).toMatchInlineSnapshot(`
+      {
+        "error": {
+          "start": 2,
+          "type": "ExpectedAsterisk",
+        },
+        "ok": false,
+      }
+    `)
+  })
+
+  it('errors for unused symbols', () => {
+    expect(tokenize(source('&&'))).toMatchInlineSnapshot(`
+      {
+        "error": {
+          "start": 0,
+          "type": "InvalidIdentifier",
+        },
+        "ok": false,
+      }
+    `)
+  })
+})
+
 describe("example payloads to tokenize", () => {
   it("tokenizes correctly", () => {
     expect(tokenize(source(EXAMPLE))).toMatchInlineSnapshot(`

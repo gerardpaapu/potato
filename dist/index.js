@@ -26,25 +26,27 @@ function ok(value) {
 function error(error2) {
   return { ok: false, error: error2 };
 }
+function bind(f, a) {
+  if (!a.ok) {
+    return a;
+  }
+  return f(a.value);
+}
+function compose3(f, g, h) {
+  return (a) => bind(h, bind(g, f(a)));
+}
 
 // src/parse.ts
 var OBJECT = 1;
 var ARRAY = 2;
 var FUNCALL = 3;
 var PRIMITIVE = 4;
-function fail(tokens, location, message) {
-  return error({ tokens, idx: location, message });
+function fail(tokens, location, type) {
+  const { start, end } = tokens[location];
+  return error({ type, start, end });
 }
 function parse(tokens) {
-  let idx = 0;
-  let ok2 = true;
-  if (tokens.length > 6) {
-    const [_null, semi, r, dot, error2, eq] = tokens;
-    if (_null.type === "IDENTIFIER" && _null.value === "null" && semi.type === "SEMICOLON" && r.type === "IDENTIFIER" && r.value == "r" && dot.type === "DOT" && error2.type === "IDENTIFIER" && error2.value === "error" && eq.type === "ASSIGN") {
-      idx += 6;
-      ok2 = false;
-    }
-  }
+  let [ok2, idx] = parsePrologue(tokens, 0);
   const result = parseValue(tokens, idx);
   if (!result.ok) {
     return result;
@@ -52,12 +54,21 @@ function parse(tokens) {
   const [value, next] = result.value;
   idx = next;
   if (tokens[idx].type !== "SEMICOLON" || tokens[idx + 1].type !== "EPILOGUE") {
-    return fail(tokens, idx, "Missing epilogue");
+    return fail(tokens, idx, "MissingEpilogue");
   }
   if (tokens.length > idx + 2) {
-    return fail(tokens, idx, "Trailing tokens");
+    return fail(tokens, idx, "TrailingTokens");
   }
   return ok(ok2 ? ok(value) : error(value));
+}
+function parsePrologue(tokens, idx) {
+  if (tokens.length > 6) {
+    const [_null, semi, r, dot, error2, eq] = tokens;
+    if (_null.type === "IDENTIFIER" && _null.value === "null" && semi.type === "SEMICOLON" && r.type === "IDENTIFIER" && r.value == "r" && dot.type === "DOT" && error2.type === "IDENTIFIER" && error2.value === "error" && eq.type === "ASSIGN") {
+      return [false, idx + 6];
+    }
+  }
+  return [true, idx];
 }
 function parseValue(tokens, idx = 0) {
   switch (tokens[idx].type) {
@@ -98,11 +109,11 @@ function parseValue(tokens, idx = 0) {
       return parseFuncall(tokens, idx);
     }
   }
-  return fail(tokens, idx, "Unexpected token");
+  return fail(tokens, idx, "UnexpectedToken");
 }
 function parseArray(tokens, idx) {
   if (tokens[idx].type !== "OPEN_BRACKET") {
-    return fail(tokens, idx, "expected open bracket");
+    return fail(tokens, idx, "ExpectedOpenBracket");
   }
   idx++;
   const results = [];
@@ -110,7 +121,7 @@ function parseArray(tokens, idx) {
     return ok([{ type: ARRAY, value: [] }, ++idx]);
   }
   if (idx >= tokens.length) {
-    return fail(tokens, idx, "unexpected end of input");
+    return fail(tokens, idx, "UnexpectedEndOfInput");
   }
   {
     const item = parseValue(tokens, idx);
@@ -123,13 +134,13 @@ function parseArray(tokens, idx) {
   }
   for (; ; ) {
     if (idx >= tokens.length) {
-      return fail(tokens, idx, "unexpected end of input");
+      return fail(tokens, idx, "UnexpectedEndOfInput");
     }
     if (tokens[idx].type === "CLOSE_BRACKET") {
       return ok([{ type: ARRAY, value: results }, ++idx]);
     }
     if (tokens[idx].type !== "COMMA") {
-      return fail(tokens, idx, "expected comma");
+      return fail(tokens, idx, "ExpectedComma");
     }
     idx++;
     const item = parseValue(tokens, idx);
@@ -143,7 +154,7 @@ function parseArray(tokens, idx) {
 }
 function parseObject(tokens, idx) {
   if (tokens[idx].type !== "OPEN_BRACE") {
-    return fail(tokens, idx, "expected open brace");
+    return fail(tokens, idx, "ExpectedOpenBrace");
   }
   idx++;
   const results = {};
@@ -151,16 +162,16 @@ function parseObject(tokens, idx) {
     return ok([{ type: OBJECT, value: results }, ++idx]);
   }
   if (idx >= tokens.length) {
-    return fail(tokens, idx, "unexpected end of input");
+    return fail(tokens, idx, "UnexpectedEndOfInput");
   }
   {
     if (tokens[idx].type !== "STRING_LITERAL") {
-      return fail(tokens, idx, "expected string key");
+      return fail(tokens, idx, "ExpectedStringKey");
     }
     const key = tokens[idx].value;
     idx++;
     if (tokens[idx].type !== "COLON") {
-      return fail(tokens, idx, "colon");
+      return fail(tokens, idx, "ExpectedColon");
     }
     idx++;
     const item = parseValue(tokens, idx);
@@ -173,22 +184,22 @@ function parseObject(tokens, idx) {
   }
   for (; ; ) {
     if (idx >= tokens.length) {
-      return fail(tokens, idx, "unexpected end of input");
+      return fail(tokens, idx, "UnexpectedEndOfInput");
     }
     if (tokens[idx].type === "CLOSE_BRACE") {
       return ok([{ type: OBJECT, value: results }, ++idx]);
     }
     if (tokens[idx].type !== "COMMA") {
-      return fail(tokens, idx, "expected comma");
+      return fail(tokens, idx, "ExpectedComma");
     }
     idx++;
     if (tokens[idx].type !== "STRING_LITERAL") {
-      return fail(tokens, idx, "expected string key");
+      return fail(tokens, idx, "ExpectedStringKey");
     }
     const key = tokens[idx].value;
     idx++;
     if (tokens[idx].type !== "COLON") {
-      return fail(tokens, idx, "expected colon");
+      return fail(tokens, idx, "ExpectedColon");
     }
     idx++;
     const item = parseValue(tokens, idx);
@@ -203,20 +214,20 @@ function parseObject(tokens, idx) {
 function parseFuncall(tokens, idx) {
   const names = [];
   if (tokens[idx].type !== "IDENTIFIER") {
-    return fail(tokens, idx, "expected function name");
+    return fail(tokens, idx, "ExpectedFunctionName");
   }
   names.push(tokens[idx++].value);
   while (tokens[idx].type === "DOT") {
     idx++;
     if (tokens[idx].type !== "IDENTIFIER") {
-      return fail(tokens, idx, "expected function name");
+      return fail(tokens, idx, "ExpectedFunctionName");
     }
     names.push(tokens[idx++].value);
   }
   const fqn = names.join(".");
   const args = [];
   if (tokens[idx].type !== "OPEN_PAREN") {
-    return fail(tokens, idx, "expected arguments list");
+    return fail(tokens, idx, "ExpectedArgumentsList");
   }
   idx++;
   if (tokens[idx].type === "CLOSE_PAREN") {
@@ -242,7 +253,7 @@ function parseFuncall(tokens, idx) {
       ]);
     }
     if (tokens[idx].type !== "COMMA") {
-      return fail(tokens, idx, "expected comma in arguments list");
+      return fail(tokens, idx, "ExpectedComma");
     }
     idx++;
     const result = parseValue(tokens, idx);
@@ -262,7 +273,7 @@ function tokenize(src) {
   for (; ; ) {
     switch (peek(src)) {
       case void 0:
-        return tokens;
+        return ok(tokens);
       case "0":
       case "1":
       case "2":
@@ -273,84 +284,104 @@ function tokenize(src) {
       case "7":
       case "8":
       case "9": {
+        const start = src.idx;
         const value = readNumberLiteral(src);
         if (value == void 0) {
-          throw new Error("Invalid number literal");
+          return error({
+            start: src.idx,
+            type: "InvalidNumberLiteral"
+          });
         }
-        tokens.push({ type: "NUMBER_LITERAL", value });
+        const end = src.idx;
+        tokens.push({ type: "NUMBER_LITERAL", value, start, end });
         break;
       }
       case '"': {
-        const value = readStringLiteral(src);
-        if (value == void 0) {
-          throw new Error("Invalid string literal");
+        const start = src.idx;
+        const result = readStringLiteral(src);
+        if (!result.ok) {
+          return result;
         }
-        tokens.push({ type: "STRING_LITERAL", value });
+        const end = src.idx;
+        tokens.push({
+          type: "STRING_LITERAL",
+          value: result.value,
+          start,
+          end
+        });
         break;
       }
       case "=":
         pop(src);
-        tokens.push({ type: "ASSIGN" });
+        tokens.push({ type: "ASSIGN", start: src.idx - 1, end: src.idx });
         break;
       case "(":
         pop(src);
-        tokens.push({ type: "OPEN_PAREN" });
+        tokens.push({ type: "OPEN_PAREN", start: src.idx - 1, end: src.idx });
         break;
       case ")":
         pop(src);
-        tokens.push({ type: "CLOSE_PAREN" });
+        tokens.push({ type: "CLOSE_PAREN", start: src.idx - 1, end: src.idx });
         break;
       case "[":
         pop(src);
-        tokens.push({ type: "OPEN_BRACKET" });
+        tokens.push({ type: "OPEN_BRACKET", start: src.idx - 1, end: src.idx });
         break;
       case "]":
         pop(src);
-        tokens.push({ type: "CLOSE_BRACKET" });
+        tokens.push({
+          type: "CLOSE_BRACKET",
+          start: src.idx - 1,
+          end: src.idx
+        });
         break;
       case "{":
         pop(src);
-        tokens.push({ type: "OPEN_BRACE" });
+        tokens.push({ type: "OPEN_BRACE", start: src.idx - 1, end: src.idx });
         break;
       case "}":
         pop(src);
-        tokens.push({ type: "CLOSE_BRACE" });
+        tokens.push({ type: "CLOSE_BRACE", start: src.idx - 1, end: src.idx });
         break;
       case ";":
         pop(src);
-        tokens.push({ type: "SEMICOLON" });
+        tokens.push({ type: "SEMICOLON", start: src.idx - 1, end: src.idx });
         break;
       case ":":
         pop(src);
-        tokens.push({ type: "COLON" });
+        tokens.push({ type: "COLON", start: src.idx - 1, end: src.idx });
         break;
       case ".":
         pop(src);
-        tokens.push({ type: "DOT" });
+        tokens.push({ type: "DOT", start: src.idx - 1, end: src.idx });
         break;
       case ",":
         pop(src);
-        tokens.push({ type: "COMMA" });
+        tokens.push({ type: "COMMA", start: src.idx - 1, end: src.idx });
         break;
       case "/":
         {
           pop(src);
           const star = pop(src);
           if (star !== "*") {
-            throw new Error("expected asterisk");
+            return error({
+              start: src.idx,
+              type: "ExpectedAsterisk"
+            });
           }
-          tokens.push({ type: "EPILOGUE" });
+          tokens.push({ type: "EPILOGUE", start: src.idx - 2, end: src.idx });
         }
         break;
       default: {
+        const start = src.idx;
         const value = readIdentifier(src);
         if (value == void 0) {
-          console.error(tokens);
-          throw new Error(
-            `invalid identifier: ${src.str.slice(src.idx, src.idx + 3)}`
-          );
+          return error({
+            start: src.idx,
+            type: "InvalidIdentifier"
+          });
         }
-        tokens.push({ type: "IDENTIFIER", value });
+        tokens.push({ type: "IDENTIFIER", value, start, end: src.idx });
       }
     }
     skipWhitespace(src);
@@ -387,10 +418,12 @@ var ESCAPES = {
   t: "	"
 };
 function readStringLiteral(src) {
-  const start = src.idx;
   const delimiter = pop(src);
   if (delimiter !== '"' && delimiter !== "'") {
-    return void 0;
+    return error({
+      start: src.idx,
+      type: "InvalidStringLiteral"
+    });
   }
   let value = "";
   while (src.idx < src.str.length) {
@@ -409,7 +442,10 @@ function readStringLiteral(src) {
           } else {
             const escape = ESCAPES[code];
             if (!escape) {
-              return void 0;
+              return error({
+                start: src.idx,
+                type: "InvalidStringLiteral"
+              });
             }
             value += escape;
           }
@@ -417,65 +453,86 @@ function readStringLiteral(src) {
         break;
       case delimiter:
         pop(src);
-        return value;
+        return ok(value);
       default:
         value += pop(src);
     }
   }
-  throw new Error("Unexpected EOF in string starting at " + start);
+  return error({
+    start: src.idx,
+    type: "InvalidStringLiteral"
+  });
 }
 
 // src/interpret.ts
 function interpret(ast) {
   if (!ast.ok) {
-    return { ok: false, error: extract(ast.error) };
+    const r2 = extract(ast.error);
+    if (!r2.ok) {
+      return r2;
+    }
+    return { ok: false, error: r2.value };
   }
-  return { ok: true, value: extract(ast.value) };
+  const r = extract(ast.value);
+  if (!r.ok) {
+    return r;
+  }
+  return { ok: true, value: r.value };
 }
 function extract(v) {
   switch (v.type) {
     case PRIMITIVE:
-      return v.value;
+      return ok(v.value);
     case ARRAY: {
-      return v.value.map(extract);
+      const results = [];
+      for (const item of v.value) {
+        const result = extract(item);
+        if (!result.ok) {
+          return result;
+        }
+        results.push(result.value);
+      }
+      return ok(results);
     }
     case OBJECT: {
-      const result = {};
+      const results = /* @__PURE__ */ Object.create(null);
       for (const k in v.value) {
         if (k === "__proto__") {
           continue;
         }
-        result[k] = extract(v.value[k]);
+        const result = extract(v.value[k]);
+        if (!result.ok) {
+          return result;
+        }
+        results[k] = result.value;
       }
-      return result;
+      return ok(results);
     }
     case FUNCALL: {
       const { name, args, isConstructor } = v;
       if (name === "Data.Dictionary" && isConstructor) {
-        const result = /* @__PURE__ */ new Map();
-        const pairs = args.map(extract)[1];
-        for (const [key, value] of pairs) {
-          result.set(key, value);
+        const results = /* @__PURE__ */ new Map();
+        const pairs = extract(args[1]);
+        if (!pairs.ok) {
+          return pairs;
         }
-        return result;
+        for (const [key, value] of pairs.value) {
+          results.set(key, value);
+        }
+        return ok(results);
       }
-      return { name, args: args.map(extract), isConstructor };
+      return error({
+        start: 0,
+        type: "InvalidFunctionName"
+      });
     }
   }
 }
 
 // src/index.ts
 function read(input) {
-  const s = source(input);
-  const tokens = tokenize(s);
-  const ast = parse(tokens);
-  if (!ast.ok) {
-    throw new Error(
-      `failed to parse text: ${ast.error.message ?? "unknown error"} @ token ${ast.error.idx}`
-    );
-  }
-  const result = interpret(ast.value);
-  return result;
+  const read2 = compose3(tokenize, parse, interpret);
+  return read2(source(input));
 }
 export {
   read

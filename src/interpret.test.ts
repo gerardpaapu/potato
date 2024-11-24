@@ -30,3 +30,129 @@ describe('example payloads to interpret', () => {
     `);
   });
 });
+
+
+describe('an object', () => {
+  const read = compose3(tokenize, parse, interpret)
+
+  it('reads a basic object', () => {
+
+    expect(read(source('{ "foo": 1};/*'))).toMatchInlineSnapshot(`
+      {
+        "ok": true,
+        "value": {
+          "foo": 1,
+        },
+      }
+    `)
+  })
+
+  it('omits __proto__ keys', () => {
+    expect(read(source('{ "__proto__": 1 }; /*'))).toMatchInlineSnapshot(`
+      {
+        "ok": true,
+        "value": {},
+      }
+    `)
+  })
+
+  it('reads an error payload', () => {
+    expect(read(source('null; r.error = { "foo": "bar" };/*'))).toMatchInlineSnapshot(`
+      {
+        "error": {
+          "foo": "bar",
+        },
+        "ok": false,
+      }
+    `)
+  })
+
+  it('reads primitives', () => {
+    expect(read(source('[undefined, null, true, false, 0];/*'))).toMatchInlineSnapshot(`
+      {
+        "ok": true,
+        "value": [
+          undefined,
+          null,
+          true,
+          false,
+          0,
+        ],
+      }
+    `)
+  })
+  it('reads weird strings', () => {
+    expect(read(source('"\\u2665\\t\\n";/*'))).toMatchInlineSnapshot(`
+      {
+        "ok": true,
+        "value": "♥	
+      ",
+      }
+    `)
+  })
+
+  it('reads empty arrays', () => {
+    expect(read(source('[];/*'))).toMatchInlineSnapshot(`
+      {
+        "ok": true,
+        "value": [],
+      }
+    `)
+  })
+
+  it('reads empty objects', () => {
+    expect(read(source('{};/*'))).toMatchInlineSnapshot(`
+      {
+        "ok": true,
+        "value": {},
+      }
+    `)
+  })
+
+  it('propagates syntax errors', () => {
+    expect(read(source('[;/*'))).toMatchInlineSnapshot(`
+      {
+        "error": {
+          "end": 2,
+          "start": 1,
+          "type": "UnexpectedToken",
+        },
+        "ok": false,
+      }
+    `)
+  })
+
+  it('manages errors thrown within error responses', () => {
+    expect(read(source('null; r.error = new Data.Oops();/*'))).toMatchInlineSnapshot(`
+      {
+        "error": {
+          "start": 0,
+          "type": "InvalidFunctionName",
+        },
+        "ok": false,
+      }
+    `)
+  })
+
+  it('manages errors from within collections', () => {
+    expect(read(source('[new Data.Oops()]; /*'))).toMatchInlineSnapshot(`
+      {
+        "error": {
+          "start": 0,
+          "type": "InvalidFunctionName",
+        },
+        "ok": false,
+      }
+    `)
+
+    expect(read(source('{ "foo": new Data.Ooops() };/*'))).toMatchInlineSnapshot(`
+      {
+        "error": {
+          "start": 0,
+          "type": "InvalidFunctionName",
+        },
+        "ok": false,
+      }
+    `)
+  })
+})

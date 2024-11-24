@@ -42,9 +42,6 @@ export function extract(v: Value): Result.T<unknown, ParseError> {
     case OBJECT: {
       const results = Object.create(null) as Record<string, unknown>;
       for (const k in v.value) {
-        if (k === '__proto__') {
-          continue;
-        }
         const result = extract(v.value[k]);
         if (!result.ok) {
           return result;

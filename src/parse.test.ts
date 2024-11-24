@@ -108,3 +108,22 @@ describe('example payloads to parse', () => {
         `);
   });
 });
+
+describe('parsing specific inputs', () => {
+  it('parses empty function calls', () => {
+    expect(compose(tokenize, parse)(source('new Data.Dictionary();/*'))).toMatchInlineSnapshot(`
+      {
+        "ok": true,
+        "value": {
+          "ok": true,
+          "value": {
+            "args": [],
+            "isConstructor": true,
+            "name": "Data.Dictionary",
+            "type": 3,
+          },
+        },
+      }
+    `)
+  })
+})
