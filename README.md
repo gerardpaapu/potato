@@ -5,7 +5,7 @@ We still have a bunch of AjaxPro methods in XeroWeb and every time we unwrap the
 The format of AjaxPro is basically a weird dialect of JSON and we can parse it like JSON more or less.
 
 ```js
-import * as Potato from '@xero/potato'
+import * as Potato from '@donothing/potato'
 
 const example1 = Potato.read('{ Data: new Data.Dictionary("Type.Gore", [["key", "value"]])}/*')
 

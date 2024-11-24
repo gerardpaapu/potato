@@ -1,8 +1,8 @@
-import { type Token } from "./tokenize.ts";
-import * as Result from "./result.ts";
+import { type Token } from './tokenize.ts';
+import { ParseError, ErrorType } from './parse-error.ts';
+import * as Result from './result.ts';
 
 export type Ast = Result.T<Value, Value>;
-export type ParseError = { idx: number; tokens: Token[]; message?: string };
 export type Success = [Value, number];
 export type ParseResult = Result.T<Success, ParseError>;
 
@@ -17,6 +17,7 @@ type FunCall = {
   args: Value[];
   isConstructor: boolean;
 };
+
 export type Value =
   | { type: typeof OBJECT; value: Record<string, Value> }
   | { type: typeof ARRAY; value: Value[] }
@@ -29,33 +30,15 @@ export type Value =
 function fail<T>(
   tokens: Token[],
   location: number,
-  message?: string,
+  type: ErrorType
 ): Result.T<T, ParseError> {
-  return Result.error({ tokens, idx: location, message });
+  const { start, end } = tokens[location];
+  return Result.error({ type, start, end });
 }
 
 export function parse(tokens: Token[]): Result.T<Ast, ParseError> {
-  // the prologue is either empty or `null; r.error = `
-  let idx = 0;
-  let ok = true;
-  if (tokens.length > 6) {
-    const [_null, semi, r, dot, error, eq] = tokens;
-    if (
-      _null.type === "IDENTIFIER" &&
-      _null.value === "null" &&
-      semi.type === "SEMICOLON" &&
-      r.type === "IDENTIFIER" &&
-      r.value == "r" &&
-      dot.type === "DOT" &&
-      error.type === "IDENTIFIER" &&
-      error.value === "error" &&
-      eq.type === "ASSIGN"
-    ) {
-      idx += 6;
-      ok = false;
-    }
-  }
-
+  // eslint-disable-next-line prefer-const
+  let [ok, idx] = parsePrologue(tokens, 0);
   const result = parseValue(tokens, idx);
   if (!result.ok) {
     return result;
@@ -63,53 +46,75 @@ export function parse(tokens: Token[]): Result.T<Ast, ParseError> {
 
   const [value, next] = result.value;
   idx = next;
-  if (tokens[idx].type !== "SEMICOLON" || tokens[idx + 1].type !== "EPILOGUE") {
-    return fail(tokens, idx, "Missing epilogue");
+  if (tokens[idx].type !== 'SEMICOLON' || tokens[idx + 1].type !== 'EPILOGUE') {
+    return fail(tokens, idx, 'MissingEpilogue');
   }
 
   if (tokens.length > idx + 2) {
-    return fail(tokens, idx, "Trailing tokens");
+    return fail(tokens, idx, 'TrailingTokens');
   }
 
   return Result.ok(ok ? Result.ok(value) : Result.error(value));
 }
 
+function parsePrologue(tokens: Token[], idx: number): [boolean, number] {
+  // the prologue is either empty or `null; r.error = `
+  if (tokens.length > 6) {
+    const [_null, semi, r, dot, error, eq] = tokens;
+    if (
+      _null.type === 'IDENTIFIER' &&
+      _null.value === 'null' &&
+      semi.type === 'SEMICOLON' &&
+      r.type === 'IDENTIFIER' &&
+      r.value == 'r' &&
+      dot.type === 'DOT' &&
+      error.type === 'IDENTIFIER' &&
+      error.value === 'error' &&
+      eq.type === 'ASSIGN'
+    ) {
+      return [false, idx + 6];
+    }
+  }
+
+  return [true, idx];
+}
+
 export function parseValue(tokens: Token[], idx: number = 0): ParseResult {
   switch (tokens[idx].type) {
-    case "OPEN_BRACKET":
+    case 'OPEN_BRACKET':
       return parseArray(tokens, idx);
 
-    case "OPEN_BRACE":
+    case 'OPEN_BRACE':
       return parseObject(tokens, idx);
 
-    case "NUMBER_LITERAL":
+    case 'NUMBER_LITERAL':
       return Result.ok([
         { type: PRIMITIVE, value: JSON.parse(tokens[idx].value!) },
         ++idx,
       ]);
 
-    case "STRING_LITERAL":
+    case 'STRING_LITERAL':
       return Result.ok([{ type: PRIMITIVE, value: tokens[idx].value }, ++idx]);
 
-    case "IDENTIFIER": {
+    case 'IDENTIFIER': {
       const value = tokens[idx].value;
-      if (value === "undefined") {
+      if (value === 'undefined') {
         return Result.ok([{ type: PRIMITIVE, value: undefined }, ++idx]);
       }
 
-      if (value === "null") {
+      if (value === 'null') {
         return Result.ok([{ type: PRIMITIVE, value: null }, ++idx]);
       }
 
-      if (value === "true") {
+      if (value === 'true') {
         return Result.ok([{ type: PRIMITIVE, value: true }, ++idx]);
       }
 
-      if (value === "false") {
+      if (value === 'false') {
         return Result.ok([{ type: PRIMITIVE, value: false }, ++idx]);
       }
 
-      if (value === "new") {
+      if (value === 'new') {
         idx++; // skip the "new"
         const result = parseFuncall(tokens, idx);
         if (!result.ok) {
@@ -124,7 +129,7 @@ export function parseValue(tokens: Token[], idx: number = 0): ParseResult {
     }
   }
 
-  return fail(tokens, idx, "Unexpected token");
+  return fail(tokens, idx, 'UnexpectedToken');
 }
 
 // array  := '[' inner ']'
@@ -133,19 +138,19 @@ export function parseValue(tokens: Token[], idx: number = 0): ParseResult {
 //        := empty
 
 function parseArray(tokens: Token[], idx: number): ParseResult {
-  if (tokens[idx].type !== "OPEN_BRACKET") {
-    return fail(tokens, idx, "expected open bracket");
+  if (tokens[idx].type !== 'OPEN_BRACKET') {
+    return fail(tokens, idx, 'ExpectedOpenBracket');
   }
 
   idx++; // skip the bracket
   const results = [];
 
-  if (tokens[idx].type === "CLOSE_BRACKET") {
+  if (tokens[idx].type === 'CLOSE_BRACKET') {
     return Result.ok([{ type: ARRAY, value: [] }, ++idx]);
   }
 
   if (idx >= tokens.length) {
-    return fail(tokens, idx, "unexpected end of input");
+    return fail(tokens, idx, 'UnexpectedEndOfInput');
   }
 
   {
@@ -161,16 +166,16 @@ function parseArray(tokens: Token[], idx: number): ParseResult {
 
   for (;;) {
     if (idx >= tokens.length) {
-      return fail(tokens, idx, "unexpected end of input");
+      return fail(tokens, idx, 'UnexpectedEndOfInput');
     }
 
-    if (tokens[idx].type === "CLOSE_BRACKET") {
+    if (tokens[idx].type === 'CLOSE_BRACKET') {
       return Result.ok([{ type: ARRAY, value: results }, ++idx]);
     }
 
     // otherwise this must be a comma
-    if (tokens[idx].type !== "COMMA") {
-      return fail(tokens, idx, "expected comma");
+    if (tokens[idx].type !== 'COMMA') {
+      return fail(tokens, idx, 'ExpectedComma');
     }
     idx++;
 
@@ -190,30 +195,30 @@ function parseArray(tokens: Token[], idx: number): ParseResult {
 // head  := key ':' value
 // tail  := empty | ',' key ':' value tail
 function parseObject(tokens: Token[], idx: number): ParseResult {
-  if (tokens[idx].type !== "OPEN_BRACE") {
-    return fail(tokens, idx, "expected open brace");
+  if (tokens[idx].type !== 'OPEN_BRACE') {
+    return fail(tokens, idx, 'ExpectedOpenBrace');
   }
 
   idx++; // skip the bracket
   const results = {} as Record<string, Value>;
 
-  if (tokens[idx].type === "CLOSE_BRACE") {
+  if (tokens[idx].type === 'CLOSE_BRACE') {
     return Result.ok([{ type: OBJECT, value: results }, ++idx]);
   }
 
   if (idx >= tokens.length) {
-    return fail(tokens, idx, "unexpected end of input");
+    return fail(tokens, idx, 'UnexpectedEndOfInput');
   }
 
   {
-    if (tokens[idx].type !== "STRING_LITERAL") {
-      return fail(tokens, idx, "expected string key");
+    if (tokens[idx].type !== 'STRING_LITERAL') {
+      return fail(tokens, idx, 'ExpectedStringKey');
     }
     const key = tokens[idx].value;
     idx++;
 
-    if (tokens[idx].type !== "COLON") {
-      return fail(tokens, idx, "colon");
+    if (tokens[idx].type !== 'COLON') {
+      return fail(tokens, idx, 'ExpectedColon');
     }
     idx++;
     const item = parseValue(tokens, idx);
@@ -228,28 +233,28 @@ function parseObject(tokens: Token[], idx: number): ParseResult {
 
   for (;;) {
     if (idx >= tokens.length) {
-      return fail(tokens, idx, "unexpected end of input");
+      return fail(tokens, idx, 'UnexpectedEndOfInput');
     }
 
-    if (tokens[idx].type === "CLOSE_BRACE") {
+    if (tokens[idx].type === 'CLOSE_BRACE') {
       return Result.ok([{ type: OBJECT, value: results }, ++idx]);
     }
 
     // otherwise this must be a comma
-    if (tokens[idx].type !== "COMMA") {
-      return fail(tokens, idx, "expected comma");
+    if (tokens[idx].type !== 'COMMA') {
+      return fail(tokens, idx, 'ExpectedComma');
     }
     idx++;
 
-    if (tokens[idx].type !== "STRING_LITERAL") {
-      return fail(tokens, idx, "expected string key");
+    if (tokens[idx].type !== 'STRING_LITERAL') {
+      return fail(tokens, idx, 'ExpectedStringKey');
     }
 
     const key = tokens[idx].value;
     idx++;
 
-    if (tokens[idx].type !== "COLON") {
-      return fail(tokens, idx, "expected colon");
+    if (tokens[idx].type !== 'COLON') {
+      return fail(tokens, idx, 'ExpectedColon');
     }
     idx++;
     const item = parseValue(tokens, idx);
@@ -265,27 +270,27 @@ function parseObject(tokens: Token[], idx: number): ParseResult {
 
 function parseFuncall(tokens: Token[], idx: number): ParseResult {
   const names = [];
-  if (tokens[idx].type !== "IDENTIFIER") {
-    return fail(tokens, idx, "expected function name");
+  if (tokens[idx].type !== 'IDENTIFIER') {
+    return fail(tokens, idx, 'ExpectedFunctionName');
   }
 
   names.push(tokens[idx++].value);
-  while (tokens[idx].type === "DOT") {
+  while (tokens[idx].type === 'DOT') {
     idx++; // skip the dot
-    if (tokens[idx].type !== "IDENTIFIER") {
-      return fail(tokens, idx, "expected function name");
+    if (tokens[idx].type !== 'IDENTIFIER') {
+      return fail(tokens, idx, 'ExpectedFunctionName');
     }
     names.push(tokens[idx++].value);
   }
 
-  const fqn = names.join(".");
+  const fqn = names.join('.');
   const args = [] as Value[];
-  if (tokens[idx].type !== "OPEN_PAREN") {
-    return fail(tokens, idx, "expected arguments list");
+  if (tokens[idx].type !== 'OPEN_PAREN') {
+    return fail(tokens, idx, 'ExpectedArgumentsList');
   }
   idx++;
 
-  if (tokens[idx].type === "CLOSE_PAREN") {
+  if (tokens[idx].type === 'CLOSE_PAREN') {
     return Result.ok([
       { type: FUNCALL, name: fqn, args, isConstructor: false },
       ++idx,
@@ -304,15 +309,15 @@ function parseFuncall(tokens: Token[], idx: number): ParseResult {
   }
 
   for (;;) {
-    if (tokens[idx].type === "CLOSE_PAREN") {
+    if (tokens[idx].type === 'CLOSE_PAREN') {
       return Result.ok([
         { type: FUNCALL, name: fqn, args, isConstructor: false },
         ++idx,
       ]);
     }
 
-    if (tokens[idx].type !== "COMMA") {
-      return fail(tokens, idx, "expected comma in arguments list");
+    if (tokens[idx].type !== 'COMMA') {
+      return fail(tokens, idx, 'ExpectedComma');
     }
     idx++; // skip the comma
     const result = parseValue(tokens, idx);

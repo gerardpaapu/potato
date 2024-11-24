@@ -1,139 +1,163 @@
-import { type Source, peek, pop, skipWhitespace } from "./source.ts";
+import { type Source, peek, pop, skipWhitespace } from './source.ts';
+import * as Result from './result.ts';
+import { ParseError } from './parse-error.ts';
 
 export type TokenType =
-  | "ASSIGN"
-  | "DOT"
-  | "COMMA"
-  | "ARROW"
-  | "OPEN_BRACKET"
-  | "CLOSE_BRACKET"
-  | "OPEN_BRACE"
-  | "CLOSE_BRACE"
-  | "STRING_LITERAL"
-  | "NUMBER_LITERAL"
-  | "IDENTIFIER"
-  | "OPEN_PAREN"
-  | "CLOSE_PAREN"
-  | "COLON"
-  | "SEMICOLON"
-  | "EPILOGUE";
+  | 'ASSIGN'
+  | 'DOT'
+  | 'COMMA'
+  | 'ARROW'
+  | 'OPEN_BRACKET'
+  | 'CLOSE_BRACKET'
+  | 'OPEN_BRACE'
+  | 'CLOSE_BRACE'
+  | 'STRING_LITERAL'
+  | 'NUMBER_LITERAL'
+  | 'IDENTIFIER'
+  | 'OPEN_PAREN'
+  | 'CLOSE_PAREN'
+  | 'COLON'
+  | 'SEMICOLON'
+  | 'EPILOGUE';
 
 export interface Token {
   type: TokenType;
+  start: number;
+  end: number;
   value?: string;
 }
 
-export function tokenize(src: Source): Token[] {
+export function tokenize(src: Source): Result.T<Token[], ParseError> {
   const tokens = [] as Token[];
   skipWhitespace(src);
   for (;;) {
     switch (peek(src)) {
       case undefined:
-        return tokens;
+        return Result.ok(tokens);
 
-      case "0":
-      case "1":
-      case "2":
-      case "3":
-      case "4":
-      case "5":
-      case "6":
-      case "7":
-      case "8":
-      case "9": {
+      case '0':
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9': {
+        const start = src.idx;
         const value = readNumberLiteral(src);
         if (value == undefined) {
-          throw new Error("Invalid number literal");
+          return Result.error({
+            start: src.idx,
+            type: 'InvalidNumberLiteral',
+          });
         }
-        tokens.push({ type: "NUMBER_LITERAL", value: value });
+        const end = src.idx;
+        tokens.push({ type: 'NUMBER_LITERAL', value: value, start, end });
         break;
       }
 
       case '"': {
-        const value = readStringLiteral(src);
-        if (value == undefined) {
-          throw new Error("Invalid string literal");
+        const start = src.idx;
+        const result = readStringLiteral(src);
+        if (!result.ok) {
+          return result;
         }
-        tokens.push({ type: "STRING_LITERAL", value });
+        const end = src.idx;
+        tokens.push({
+          type: 'STRING_LITERAL',
+          value: result.value,
+          start,
+          end,
+        });
         break;
       }
 
-      case "=":
+      case '=':
         pop(src);
-        tokens.push({ type: "ASSIGN" });
+        tokens.push({ type: 'ASSIGN', start: src.idx - 1, end: src.idx });
         break;
 
-      case "(":
+      case '(':
         pop(src);
-        tokens.push({ type: "OPEN_PAREN" });
+        tokens.push({ type: 'OPEN_PAREN', start: src.idx - 1, end: src.idx });
         break;
 
-      case ")":
+      case ')':
         pop(src);
-        tokens.push({ type: "CLOSE_PAREN" });
+        tokens.push({ type: 'CLOSE_PAREN', start: src.idx - 1, end: src.idx });
         break;
 
-      case "[":
+      case '[':
         pop(src);
-        tokens.push({ type: "OPEN_BRACKET" });
+        tokens.push({ type: 'OPEN_BRACKET', start: src.idx - 1, end: src.idx });
         break;
 
-      case "]":
+      case ']':
         pop(src);
-        tokens.push({ type: "CLOSE_BRACKET" });
+        tokens.push({
+          type: 'CLOSE_BRACKET',
+          start: src.idx - 1,
+          end: src.idx,
+        });
         break;
 
-      case "{":
+      case '{':
         pop(src);
-        tokens.push({ type: "OPEN_BRACE" });
+        tokens.push({ type: 'OPEN_BRACE', start: src.idx - 1, end: src.idx });
         break;
 
-      case "}":
+      case '}':
         pop(src);
-        tokens.push({ type: "CLOSE_BRACE" });
+        tokens.push({ type: 'CLOSE_BRACE', start: src.idx - 1, end: src.idx });
         break;
 
-      case ";":
+      case ';':
         pop(src);
-        tokens.push({ type: "SEMICOLON" });
+        tokens.push({ type: 'SEMICOLON', start: src.idx - 1, end: src.idx });
         break;
 
-      case ":":
+      case ':':
         pop(src);
-        tokens.push({ type: "COLON" });
+        tokens.push({ type: 'COLON', start: src.idx - 1, end: src.idx });
         break;
 
-      case ".":
+      case '.':
         pop(src);
-        tokens.push({ type: "DOT" });
+        tokens.push({ type: 'DOT', start: src.idx - 1, end: src.idx });
         break;
 
-      case ",":
+      case ',':
         pop(src);
-        tokens.push({ type: "COMMA" });
+        tokens.push({ type: 'COMMA', start: src.idx - 1, end: src.idx });
         break;
 
-      case "/":
+      case '/':
         {
           pop(src);
           const star = pop(src);
-          if (star !== "*") {
-            throw new Error("expected asterisk");
+          if (star !== '*') {
+            return Result.error({
+              start: src.idx,
+              type: 'ExpectedAsterisk',
+            });
           }
-          tokens.push({ type: "EPILOGUE" });
+          tokens.push({ type: 'EPILOGUE', start: src.idx - 2, end: src.idx });
         }
         break;
 
       default: {
+        const start = src.idx;
         const value = readIdentifier(src);
         if (value == undefined) {
-          console.error(tokens);
-          throw new Error(
-            `invalid identifier: ${src.str.slice(src.idx, src.idx + 3)}`,
-          );
+          return Result.error({
+            start: src.idx,
+            type: 'InvalidIdentifier',
+          });
         }
 
-        tokens.push({ type: "IDENTIFIER", value });
+        tokens.push({ type: 'IDENTIFIER', value, start, end: src.idx });
       }
     }
 
@@ -168,39 +192,44 @@ function readNumberLiteral(src: Source): string | undefined {
 const ESCAPES = {
   '"': '"',
   "'": "'",
-  "\\": "\\",
-  b: "\b",
-  f: "\f",
-  n: "\n",
-  r: "\r",
-  t: "\t",
+  '\\': '\\',
+  b: '\b',
+  f: '\f',
+  n: '\n',
+  r: '\r',
+  t: '\t',
 } as Record<string, string | undefined>;
 
-function readStringLiteral(src: Source) {
-  const start = src.idx;
+function readStringLiteral(src: Source): Result.T<string, ParseError> {
   const delimiter = pop(src);
   if (delimiter !== '"' && delimiter !== "'") {
-    return undefined;
+    return Result.error({
+      start: src.idx,
+      type: 'InvalidStringLiteral',
+    });
   }
 
-  let value = "";
+  let value = '';
   while (src.idx < src.str.length) {
     switch (peek(src)) {
-      case "\\":
+      case '\\':
         {
           pop(src);
           const code = pop(src);
-          if (code === "u") {
+          if (code === 'u') {
             const code_point = parseInt(
               src.str.slice(src.idx, src.idx + 4),
-              16,
+              16
             );
             value += String.fromCharCode(code_point);
             src.idx += 4;
           } else {
             const escape = ESCAPES[code];
             if (!escape) {
-              return undefined;
+              return Result.error({
+                start: src.idx,
+                type: 'InvalidStringLiteral',
+              });
             }
             value += escape;
           }
@@ -209,12 +238,15 @@ function readStringLiteral(src: Source) {
 
       case delimiter:
         pop(src);
-        return value;
+        return Result.ok(value);
 
       default:
         value += pop(src);
     }
   }
 
-  throw new Error("Unexpected EOF in string starting at " + start);
+  return Result.error({
+    start: src.idx,
+    type: 'InvalidStringLiteral',
+  });
 }

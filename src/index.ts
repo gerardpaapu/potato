@@ -1,20 +1,10 @@
-import { source } from "./source.ts";
-import { parse } from "./parse.ts";
-import { tokenize } from "./tokenize.ts";
-import { interpret } from "./interpret.ts";
+import { source } from './source.ts';
+import { parse } from './parse.ts';
+import { tokenize } from './tokenize.ts';
+import { interpret, AjaxProResult } from './interpret.ts';
+import * as Result from './result.ts';
 
-export function read(input: string) {
-  const s = source(input);
-
-  const tokens = tokenize(s);
-  const ast = parse(tokens);
-
-  if (!ast.ok) {
-    throw new Error(
-      `failed to parse text: ${ast.error.message ?? "unknown error"} @ token ${ast.error.idx}`,
-    );
-  }
-
-  const result = interpret(ast.value);
-  return result;
+export function read(input: string): AjaxProResult {
+  const read = Result.compose3(tokenize, parse, interpret);
+  return read(source(input));
 }

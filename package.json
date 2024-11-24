@@ -1,5 +1,5 @@
 {
-  "name": "potato",
+  "name": "@donothing/potato",
   "version": "1.0.0",
   "type": "module",
   "exports": {
