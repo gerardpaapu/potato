@@ -140,7 +140,6 @@ export function parseValue(tokens: Token[], idx: number = 0): ParseResult {
 // inner  := head tail | empty
 // tail   := ',' value tail
 //        := empty
-
 function parseArray(tokens: Token[], idx: number): ParseResult {
   idx++; // skip the bracket
   const results = [];
@@ -262,8 +261,8 @@ function parseObject(tokens: Token[], idx: number): ParseResult {
     }
 
     const [value, next] = item.value;
-    if (key !== "__proto__") {
-      results[key!] = value;
+    if (key != undefined && key !== "__proto__") {
+      results[key] = value;
     }
     idx = next;
   }
