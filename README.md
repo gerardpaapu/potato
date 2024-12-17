@@ -10,12 +10,12 @@ import * as Potato from '@donothing/potato'
 const example1 = Potato.read('{ Data: new Data.Dictionary("Type.Gore", [["key", "value"]])}/*')
 
 example1.ok // true
-example1.Data.get('key') // value
+example1.data.Data.get('key') // value
 
 
 const example2 = Potato.read('null; r.error = { Message: "COMPUTER SAD" }/*')
 
 example2.ok // false
-example2.Message // 'COMPUTER SAD'
+example2.error.Message // 'COMPUTER SAD'
 ```
 
