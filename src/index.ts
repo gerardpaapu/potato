@@ -1,11 +1,13 @@
 import { source } from "./source.ts";
-import { parse } from "./parse.ts";
+import { parse, parseValue } from "./parse.ts";
 import { tokenize } from "./tokenize.ts";
 import {
   interpret,
   AjaxProResult,
   interpretWith,
   Constructors,
+  interpretValueWith,
+  defaultFunctions,
 } from "./interpret.ts";
 import * as Result from "./result.ts";
 
@@ -22,4 +24,22 @@ export function readWith(
     interpretWith(ast, constructors),
   );
   return read(source(input));
+}
+
+export function readValueWith(input: string, constructors: Constructors): AjaxProResult {
+  const tokens = tokenize(source(input))
+  if (!tokens.ok) {
+    return tokens
+  }
+  const ast = parseValue(tokens.value)
+  if (!ast.ok) {
+    return ast
+  }
+
+  const [value] = ast.value
+  return interpretValueWith(value, constructors)
+}
+
+export function readValue(input: string) {
+  return readValueWith(input, defaultFunctions)
 }

@@ -3,8 +3,7 @@ import { tokenize } from "./tokenize.ts";
 import { source } from "./source.ts";
 import { parse, parseValue } from "./parse.ts";
 import { interpret, interpretValue } from "./interpret.ts";
-import { compose, compose3 } from "./result.ts";
-import exp from "constants";
+import { compose3 } from "./result.ts";
 
 const EXAMPLE =
   '{"__type":"NetProfit.Construct.Web.UI.Ajax.AjaxResult, NetProfit.Construct.Web.Internal, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null","IsValid":true,"Result":"","Exception":"","Data":new Data.Dictionary("System.Collections.Generic.Dictionary`2[[System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089],[System.Object, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]",[["Start",1],["PageSize",50],["TotalCount",16],["CurrencyListJson","[]"]])};/*';
