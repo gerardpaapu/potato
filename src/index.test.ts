@@ -1,16 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { tokenize } from "./tokenize.ts";
-import { source } from "./source.ts";
-import { parse, parseValue } from "./parse.ts";
-import { interpret, interpretValue } from "./interpret.ts";
-import { compose3 } from "./result.ts";
+import { read, readValue } from './index.ts'
 
 const EXAMPLE =
   '{"__type":"NetProfit.Construct.Web.UI.Ajax.AjaxResult, NetProfit.Construct.Web.Internal, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null","IsValid":true,"Result":"","Exception":"","Data":new Data.Dictionary("System.Collections.Generic.Dictionary`2[[System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089],[System.Object, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]",[["Start",1],["PageSize",50],["TotalCount",16],["CurrencyListJson","[]"]])};/*';
 
 describe("example payloads to interpret", () => {
   it("interprets correctly", () => {
-    const result = compose3(tokenize, parse, interpret)(source(EXAMPLE));
+    const result = read(EXAMPLE)
     expect(result).toMatchInlineSnapshot(`
       {
         "ok": true,
@@ -31,21 +27,8 @@ describe("example payloads to interpret", () => {
   });
 
   it('can read a currency list', () => {
-    const json = `[{"__type":"","key":"CURR/CAD","value":0.830149,"html":null,"data":new Data.Dictionary("",[["DateTime","12 Nov 2024"],["ProviderName","XE.com"],["EnteredByUserName",""]])},{"__type":"","key":"CURR/JPY","value":91.6308,"html":null,"data":new Data.Dictionary("",[["DateTime","12 Nov 2024"],["ProviderName","XE.com"],["EnteredByUserName",""]])}]`
-    // const result = compose3(tokenize, parseValue, interpretValue)(source(json));
-    const tokens = tokenize(source(json))
-    if (!tokens.ok) {
-      expect.fail()
-      return
-    }
-    const ast = parseValue(tokens.value)
-    if (!ast.ok) {
-      expect.fail()
-      return
-    }
-
-    const [value] = ast.value
-    const result = interpretValue(value) 
+    const json = `[{"__type":"","key":"CURR/CAD","value":0.830149,"html":null,"data":new Data.Dictionary("",[["DateTime","12 Nov 2024"],["ProviderName","XE.com"],["EnteredByUserName",""]])},{"__type":"","key":"CURR/JPY","value":91.6308,"html":null,"data":new Data.Dictionary("",[["DateTime","12 Nov 2024"],["ProviderName","XE.com"],["EnteredByUserName",""]])}]`   
+    const result = readValue(json) 
 
     expect(result).toMatchInlineSnapshot(`
       {
@@ -81,10 +64,9 @@ describe("example payloads to interpret", () => {
 });
 
 describe("an object", () => {
-  const read = compose3(tokenize, parse, interpret);
 
   it("reads a basic object", () => {
-    expect(read(source('{ "foo": 1};/*'))).toMatchInlineSnapshot(`
+    expect(read('{ "foo": 1};/*')).toMatchInlineSnapshot(`
       {
         "ok": true,
         "value": {
@@ -95,7 +77,7 @@ describe("an object", () => {
   });
 
   it("omits __proto__ keys", () => {
-    expect(read(source('{ "__proto__": 1 }; /*'))).toMatchInlineSnapshot(`
+    expect(read('{ "__proto__": 1 }; /*')).toMatchInlineSnapshot(`
       {
         "ok": true,
         "value": {},
@@ -104,7 +86,7 @@ describe("an object", () => {
   });
 
   it("reads an error payload", () => {
-    expect(read(source('null; r.error = { "foo": "bar" };/*')))
+    expect(read('null; r.error = { "foo": "bar" };/*'))
       .toMatchInlineSnapshot(`
       {
         "error": {
@@ -116,7 +98,7 @@ describe("an object", () => {
   });
 
   it("reads primitives", () => {
-    expect(read(source("[undefined, null, true, false, 0];/*")))
+    expect(read("[undefined, null, true, false, 0];/*"))
       .toMatchInlineSnapshot(`
       {
         "ok": true,
@@ -131,7 +113,7 @@ describe("an object", () => {
     `);
   });
   it("reads weird strings", () => {
-    expect(read(source('"\\u2665\\t\\n";/*'))).toMatchInlineSnapshot(`
+    expect(read('"\\u2665\\t\\n";/*')).toMatchInlineSnapshot(`
       {
         "ok": true,
         "value": "♥	
@@ -141,7 +123,7 @@ describe("an object", () => {
   });
 
   it("reads empty arrays", () => {
-    expect(read(source("[];/*"))).toMatchInlineSnapshot(`
+    expect(read("[];/*")).toMatchInlineSnapshot(`
       {
         "ok": true,
         "value": [],
@@ -150,7 +132,7 @@ describe("an object", () => {
   });
 
   it("reads empty objects", () => {
-    expect(read(source("{};/*"))).toMatchInlineSnapshot(`
+    expect(read("{};/*")).toMatchInlineSnapshot(`
       {
         "ok": true,
         "value": {},
@@ -159,7 +141,7 @@ describe("an object", () => {
   });
 
   it("propagates syntax errors", () => {
-    expect(read(source("[;/*"))).toMatchInlineSnapshot(`
+    expect(read("[;/*")).toMatchInlineSnapshot(`
       {
         "error": {
           "end": 2,
@@ -172,7 +154,7 @@ describe("an object", () => {
   });
 
   it("manages errors thrown within error responses", () => {
-    expect(read(source("null; r.error = new Data.Oops();/*")))
+    expect(read("null; r.error = new Data.Oops();/*"))
       .toMatchInlineSnapshot(`
       {
         "error": {
@@ -185,7 +167,7 @@ describe("an object", () => {
   });
 
   it("manages errors from within collections", () => {
-    expect(read(source("[new Data.Oops()]; /*"))).toMatchInlineSnapshot(`
+    expect(read("[new Data.Oops()]; /*")).toMatchInlineSnapshot(`
       {
         "error": {
           "start": 0,
@@ -195,7 +177,7 @@ describe("an object", () => {
       }
     `);
 
-    expect(read(source('{ "foo": new Data.Ooops() };/*')))
+    expect(read('{ "foo": new Data.Ooops() };/*'))
       .toMatchInlineSnapshot(`
       {
         "error": {
