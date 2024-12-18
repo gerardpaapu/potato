@@ -17,5 +17,11 @@ const example2 = Potato.read('null; r.error = { Message: "COMPUTER SAD" }/*')
 
 example2.ok // false
 example2.error.Message // 'COMPUTER SAD'
+
+// readValue doesn't expect the '/*' at the end or the 'null; r.error = '
+// at the start
+const example3 = Potato.readValue('{ Data: new Data.Dictionary("Type.Gore", [["key", "value"]])}')
+example3.ok // true
+example3.data.Data.get('key') // value
 ```
 
