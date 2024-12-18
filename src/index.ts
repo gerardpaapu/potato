@@ -36,7 +36,10 @@ export function readValueWith(input: string, constructors: Constructors): AjaxPr
     return ast
   }
 
-  const [value] = ast.value
+  const [value, idx] = ast.value
+  if (idx < tokens.value.length) {
+    return Result.error({ type: 'TrailingTokens', start: idx })
+  }
   return interpretValueWith(value, constructors)
 }
 
