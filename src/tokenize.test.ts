@@ -18,6 +18,22 @@ describe("tokenizing errors", () => {
     `);
   });
 
+  it('reads a decimal', () => {
+    expect(tokenize(source('0.830149'))).toMatchInlineSnapshot(`
+      {
+        "ok": true,
+        "value": [
+          {
+            "end": 8,
+            "start": 0,
+            "type": "NUMBER_LITERAL",
+            "value": "0.830149",
+          },
+        ],
+      }
+    `)
+  })
+
   it("errors for incomplete epilogue", () => {
     expect(tokenize(source("/"))).toMatchInlineSnapshot(`
       {

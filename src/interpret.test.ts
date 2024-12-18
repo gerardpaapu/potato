@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { tokenize } from "./tokenize.ts";
 import { source } from "./source.ts";
-import { parse } from "./parse.ts";
-import { interpret } from "./interpret.ts";
-import { compose3 } from "./result.ts";
+import { parse, parseValue } from "./parse.ts";
+import { interpret, interpretValue } from "./interpret.ts";
+import { compose, compose3 } from "./result.ts";
+import exp from "constants";
 
 const EXAMPLE =
   '{"__type":"NetProfit.Construct.Web.UI.Ajax.AjaxResult, NetProfit.Construct.Web.Internal, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null","IsValid":true,"Result":"","Exception":"","Data":new Data.Dictionary("System.Collections.Generic.Dictionary`2[[System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089],[System.Object, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]]",[["Start",1],["PageSize",50],["TotalCount",16],["CurrencyListJson","[]"]])};/*';
@@ -29,6 +30,55 @@ describe("example payloads to interpret", () => {
       }
     `);
   });
+
+  it('can read a currency list', () => {
+    const json = `[{"__type":"","key":"CURR/CAD","value":0.830149,"html":null,"data":new Data.Dictionary("",[["DateTime","12 Nov 2024"],["ProviderName","XE.com"],["EnteredByUserName",""]])},{"__type":"","key":"CURR/JPY","value":91.6308,"html":null,"data":new Data.Dictionary("",[["DateTime","12 Nov 2024"],["ProviderName","XE.com"],["EnteredByUserName",""]])}]`
+    // const result = compose3(tokenize, parseValue, interpretValue)(source(json));
+    const tokens = tokenize(source(json))
+    if (!tokens.ok) {
+      expect.fail()
+      return
+    }
+    const ast = parseValue(tokens.value)
+    if (!ast.ok) {
+      expect.fail()
+      return
+    }
+
+    const [value] = ast.value
+    const result = interpretValue(value) 
+
+    expect(result).toMatchInlineSnapshot(`
+      {
+        "ok": true,
+        "value": [
+          {
+            "__type": "",
+            "data": Map {
+              "DateTime" => "12 Nov 2024",
+              "ProviderName" => "XE.com",
+              "EnteredByUserName" => "",
+            },
+            "html": null,
+            "key": "CURR/CAD",
+            "value": 0.830149,
+          },
+          {
+            "__type": "",
+            "data": Map {
+              "DateTime" => "12 Nov 2024",
+              "ProviderName" => "XE.com",
+              "EnteredByUserName" => "",
+            },
+            "html": null,
+            "key": "CURR/JPY",
+            "value": 91.6308,
+          },
+        ],
+      }
+    `)
+
+  })
 });
 
 describe("an object", () => {

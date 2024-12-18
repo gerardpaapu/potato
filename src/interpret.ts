@@ -1,4 +1,4 @@
-import { Ast, Value, OBJECT, ARRAY, FUNCALL, PRIMITIVE } from "./parse.ts";
+import { Ast, Value, OBJECT, ARRAY, FUNCALL, PRIMITIVE, Success } from "./parse.ts";
 import * as Result from "./result.ts";
 import { ParseError } from "./parse-error.ts";
 
@@ -45,6 +45,10 @@ export function interpretWith(
     return r;
   }
   return { ok: true, value: r.value };
+}
+
+export function interpretValue(ast: Value) {
+  return extract(ast, defaultFunctions)
 }
 
 export function extract(
